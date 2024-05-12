@@ -1,3 +1,6 @@
 /augmented_data
 /training_data
 /__pycache__
+/site
+projectdb
+model_zero.h5
