@@ -5,7 +5,7 @@ from pathlib import Path
 
 # Define paths and variables
 data_directory = "training_data"
-audio_folder = ["owais", "usman", "bilal"]  # Subfolders for each speaker
+audio_folder = ["owais", "usman"]  # Subfolders for each speaker
 sample_rate = 16000  # Sample rate of audio files
 
 # Load the trained model

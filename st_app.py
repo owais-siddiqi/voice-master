@@ -1,13 +1,25 @@
 import time
+from matplotlib import pyplot as plt
 import streamlit as st
 import pyaudio
 import numpy as np
 import tensorflow as tf
 import speech_recognition as sr
-import matplotlib.pyplot as plt
+import hashlib
+import sqlite3
+import warnings
+
+
+# Suppress the warning about compiled metrics
+warnings.filterwarnings("ignore", message="Compiled the loaded model, but the compiled metrics have yet to be built")
+# Connect to the SQLite database
+conn = sqlite3.connect("projectdb")
+cursor = conn.cursor()
 
 # Load the trained model
-model = tf.keras.models.load_model("model_zero.h5")
+@st.cache_data
+def load_model():
+    return tf.keras.models.load_model("model_zero.h5", compile=False)
 
 # Define paths and variables
 audio_folder = ["owais", "usman"]  # Subfolders for each speaker
@@ -33,7 +45,7 @@ def preprocess_audio(audio):
     return audio
 
 # Function to predict speaker
-def predict_speaker(audio):
+def predict_speaker(audio, model):
     preprocessed_audio = preprocess_audio(audio)
     predictions = model.predict(preprocessed_audio)
     predicted_speaker_index = np.argmax(predictions)
@@ -53,6 +65,7 @@ def transcribe_speech(audio):
 
 # Record audio from the user
 def record_audio():
+    print("Started recording")
     audio = []
     p = pyaudio.PyAudio()
     stream = p.open(format=FORMAT,
@@ -88,19 +101,80 @@ def record_audio():
     plt.close()
     return audio
 
+# Function to register a new user
+def register_user(email, password):
+    hashed_password = hashlib.sha256(password.encode()).hexdigest()
+    cursor.execute("INSERT INTO users (Email, Password, Status, CreateDt) VALUES (?, ?, ?, datetime('now'))", (email, hashed_password, "Active"))
+    conn.commit()
+
+# Function to login
+def login_user(email, password):
+    hashed_password = hashlib.sha256(password.encode()).hexdigest()
+    cursor.execute("SELECT Id FROM users WHERE Email = ? AND Password = ?", (email, hashed_password))
+    user_id = cursor.fetchone()
+    if user_id:
+        return user_id[0]
+    else:
+        return None
+
+# Function to logout
+def logout_user():
+    st.session_state.clear()
+    # Redirect the user to the login page by rerunning the app
+    st.experimental_rerun()
+
+# Function to save audio history
+def save_audio_history(user_id, name, audio_blob):
+    cursor.execute("INSERT INTO history (user_id, name, audio) VALUES (?, ?, ?)", (user_id, name, audio_blob))
+    conn.commit()
+
 # Streamlit app
 def main():
     st.title("Speaker Recognition and Speech Transcription")
 
-    st.write("Press the button to start recording...")
+    # Load the model
+    model = load_model()
 
-    if st.button("Start Recording"):
+    # Initialize session state if not already initialized
+    if 'recording_started' not in st.session_state:
+        st.session_state.recording_started = False
+
+    # Login Section
+    st.subheader("Login")
+    email = st.text_input("Email")
+    password = st.text_input("Password", type="password")
+    if st.button("Login"):
+        user_id = login_user(email, password)
+        if user_id:
+            st.success("Login successful!")
+            st.write("Press the button to start recording...")
+            if st.button("Start Recording"):
+                st.session_state.recording_started = True  # Set recording flag to True
+
+    # Recording Section
+    if st.session_state.recording_started:
+        st.write("Recording...")
         audio = record_audio()
-        predicted_speaker = predict_speaker(audio)
+        predicted_speaker = predict_speaker(audio, model)
         transcription = transcribe_speech(audio)
 
+        st.write("Voice Recognition Results:")
         st.write(f"Predicted Speaker: {predicted_speaker}")
         st.write(f"Transcription: {transcription}")
+
+    # Register Section
+    st.subheader("Register")
+    new_email = st.text_input("New Email")
+    new_password = st.text_input("New Password", type="password")
+    if st.button("Register"):
+        # Check if email already exists
+        cursor.execute("SELECT Id FROM users WHERE Email = ?", (new_email,))
+        existing_user = cursor.fetchone()
+        if existing_user:
+            st.error("Email already in use.")
+        else:
+            register_user(new_email, new_password)
+            st.success("Registration successful!")
 
 if __name__ == "__main__":
     main()
