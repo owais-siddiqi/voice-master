@@ -2,7 +2,7 @@
 
 ## Overview
 
-This project is a Streamlit application designed for speaker recognition. It allows users to sign up, log in, and use various functionalities like recording live audio, uploading audio files, predicting the speaker using a pre-trained model, and retrieving past transcriptions. The application also features a database to store user information and transcription history.
+This project is a Streamlit application runnning a keras model trained on our team's voices for speaker recognition . It allows users to sign up, log in, and use various functionalities like recording live audio, uploading audio files, predicting the speaker using a pre-trained model, and retrieving past transcriptions. The application also features a database to store user information and transcription history.
 
 ## Features
 
@@ -128,8 +128,3 @@ To manually set up the SQLite database for user management and history tracking,
 Note: These scripts assume the database file (`voice_db.db`) is created in the same directory as the scripts. Adjust the database file path if necessary.
 
 For training on different/new data, check `training.md`
-
-
-## License
-
-This project is licensed under the MIT License.
